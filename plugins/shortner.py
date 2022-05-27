@@ -6,7 +6,7 @@ from pyshorteners import Shortener
 
 
 
-LINKLY_API = os.environ.get("LINKLY_API", 558bea95c4cbb568d9c6fc9f2ea86251237aa361)
+LINKLY_API = os.environ.get("LINKLY_API", None)
 
 BUTTONS = InlineKeyboardMarkup(
     [
