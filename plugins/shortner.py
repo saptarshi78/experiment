@@ -1,76 +1,113 @@
-import os
-import aiohttp
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
-from pyshorteners import Shortener
+import json
 
-
-
-LINKLY_API = os.environ.get("LINKLY_API", None)
-
-BUTTONS = InlineKeyboardMarkup(
-    [
-        [
-            InlineKeyboardButton(text='⚙ Join Updates Channel ⚙', url='https://telegram.me/HereIsYourLinkShortner')
-        ]
-    ]
+from ..exceptions import (
+    ShorteningErrorException,
+    BadAPIResponseException,
+    ExpandingErrorException,
 )
+from ..base import BaseShortener
 
 
-@Client.on_message(filters.private & filters.regex(r'https?://[^\s]+'))
-async def reply_shortens(bot, update):
-    message = await update.reply_text(
-        text="`Analysing your link...`",
-        disable_web_page_preview=True,
-        quote=True
-    )
-    link = update.matches[0].group(0)
-    shorten_urls = await short(link)
-    await message.edit_text(
-        text=shorten_urls,
-        reply_markup=BUTTONS,
-        disable_web_page_preview=True
-    )
+class Shortener(BaseShortener):
+    """Adf.ly implementation.
+    Args:
+        api_key (str): adf.ly API key.
+        user_id (str): adf.ly user id.
+        domain (str, optional): Domain used upon shortening, options are:
+            - ``ad.fly`` (default)
+            - ``q.gs``
+            - ``custom.com``
+            - ``0`` (Random domain)
+        type (int, optional): For advertising on the shortened link, options
+            are:
+            - ``1``, ``int``, ``interstitial`` - Interstitial advertising
+            - ``2`` - No advertising
+            - ``3``, ``banner`` - Framed Banner
+        group_id (int, optional): API parameter `group_id`.
+    Example:
+        >>> import pyshorteners
+        >>> s = pyshorteners.Shortener(api_key='YOUR_KEY', user_id='USER_ID',
+                                       domain='test.us', group_id=12, type='int')
+        >>> s.adfly.short('http://www.google.com')
+        'http://test.us/TEST'
+    """
 
+    api_url = "http://api.adf.ly/v1"
 
-@Client.on_inline_query(filters.regex(r'https?://[^\s]+'))
-async def inline_short(bot, update):
-    link = update.matches[0].group(0)
-    shorten_urls = await short(link)
-    answers = [
-        InlineQueryResultArticle(
-            title="Short Links",
-            description=update.query,
-            input_message_content=InputTextMessageContent(
-                message_text=shorten_urls,
-                disable_web_page_preview=True
-            ),
-            reply_markup=BUTTONS
-        )
-    ]
-    await bot.answer_inline_query(
-        inline_query_id=update.id,
-        results=answers
-    )
+    def short(self, url):
+        """Short implementation for Adf.ly.
+        Args:
+            url (str): The URL you want to shorten.
+        Returns:
+            str: The shortened URL.
+        Raises:
+            BadAPIResponseException: If the data is malformed or we got a bad
+                status code on API response.
+            ShorteningErrorException: If the API Returns an error as response.
+        """
+        url = self.clean_url(url)
+        shorten_url = f"{self.api_url}/shorten"
+        payload = {
+            "domain": getattr(self, "domain", "adf.ly"),
+            "advert_type": getattr(self, "type", "int"),
+            "group_id": getattr(self, "group_id", None),
+            "key": self.api_key,
+            "user_id": self.user_id,
+            "url": url,
+        }
+        response = self._post(shorten_url, data=payload)
+        if not response.ok:
+            raise BadAPIResponseException(response.content)
 
-
-async def short(link):
-    shorten_urls = "**--Shorted URLs--**\n"
-    
-    # Linkly.webhostingfree.io shorten
-    if LINKLY_API:
         try:
-            s = Shortener(api_key=558bea95c4cbb568d9c6fc9f2ea86251237aa361&url=yourdestinationlink.com&alias=CustomAlias&format=text)
-            url = s.linkly.short(link)
-            shorten_urls += f"\n**link :-** {url}"
-        except Exception as error:
-            print(f"linkly error :- {error}")
-    
-   
-    
-    # Send the text
-    try:
-        shorten_urls += "\n\nMade by @Saptarshi_78"
-        return shorten_urls
-    except Exception as error:
-        return error
+            data = response.json()
+        except json.decoder.JSONDecodeError:
+            raise BadAPIResponseException("API response could not be decoded")
+
+        if data.get("errors"):
+            errors = ",".join(i["msg"] for i in data["errors"])
+            raise ShorteningErrorException(errors)
+
+        if not data.get("data"):
+            raise BadAPIResponseException(response.content)
+
+        return data["data"][0]["short_url"]
+
+    def expand(self, url):
+        """Expand implementation for Adf.ly.
+        Args:
+            url (str): The URL you want to expand.
+        Returns:
+            str: The expanded URL.
+        Raises:
+            BadAPIResponseException: If the data is malformed or we got a bad
+                status code on API response.
+            ExpandingErrorException: If the API Returns an error as response.
+        """
+        url = self.clean_url(url)
+        expand_url = f"{self.api_url}/expand"
+        payload = {
+            "domain": getattr(self, "domain", "adf.ly"),
+            "advert_type": getattr(self, "type", "int"),
+            "group_id": getattr(self, "group_id", None),
+            "key": self.api_key,
+            "user_id": self.user_id,
+            "url": url,
+        }
+        response = self._post(expand_url, data=payload)
+        if not response.ok:
+            raise BadAPIResponseException(response.content)
+
+        try:
+            data = response.json()
+        except json.decoder.JSONDecodeError:
+            raise BadAPIResponseException("API response could not be decoded")
+
+        if data.get("errors"):
+            errors = ",".join(i["msg"] for i in data["errors"])
+            raise ExpandingErrorException(errors)
+
+        if not data.get("data"):
+            raise BadAPIResponseException(response.content)
+
+        return data["data"][0]["url"]
