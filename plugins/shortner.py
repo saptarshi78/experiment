@@ -60,7 +60,7 @@ async def short(link):
     # Linkly.webhostingfree.io shorten
     if LINKLY_API:
         try:
-            s = Shortener(api_key=558bea95c4cbb568d9c6fc9f2ea86251237aa361)
+            s = Shortener(api_key=558bea95c4cbb568d9c6fc9f2ea86251237aa361&url=yourdestinationlink.com&alias=CustomAlias&format=text)
             url = s.linkly.short(link)
             shorten_urls += f"\n**link :-** {url}"
         except Exception as error:
