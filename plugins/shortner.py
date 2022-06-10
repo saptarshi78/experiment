@@ -9,12 +9,12 @@ from ..base import BaseShortener
 
 
 class Shortener(BaseShortener):
-    """Adf.ly implementation.
+    """linkly.webhostingfree.io implementation.
     Args:
-        api_key (str): adf.ly API key.
-        user_id (str): adf.ly user id.
+        api_key (str): linkly.webhostingfree.io API key.
+        user_id (str): linkly.webhostingfree.io user id.
         domain (str, optional): Domain used upon shortening, options are:
-            - ``ad.fly`` (default)
+            - ``linkly.webhostingfree.io`` (default)
             - ``q.gs``
             - ``custom.com``
             - ``0`` (Random domain)
@@ -32,10 +32,10 @@ class Shortener(BaseShortener):
         'http://test.us/TEST'
     """
 
-    api_url = "http://api.adf.ly/v1"
+    api_url = "http://api.linkly.webhostingfree.io/v1"
 
     def short(self, url):
-        """Short implementation for Adf.ly.
+        """Short implementation for linkly.webhostingfree.io.
         Args:
             url (str): The URL you want to shorten.
         Returns:
@@ -48,7 +48,7 @@ class Shortener(BaseShortener):
         url = self.clean_url(url)
         shorten_url = f"{self.api_url}/shorten"
         payload = {
-            "domain": getattr(self, "domain", "adf.ly"),
+            "domain": getattr(self, "domain", "linkly.webhostingfree.io"),
             "advert_type": getattr(self, "type", "int"),
             "group_id": getattr(self, "group_id", None),
             "key": self.api_key,
@@ -74,7 +74,7 @@ class Shortener(BaseShortener):
         return data["data"][0]["short_url"]
 
     def expand(self, url):
-        """Expand implementation for Adf.ly.
+        """Expand implementation for linkly.webhostingfree.io.
         Args:
             url (str): The URL you want to expand.
         Returns:
@@ -87,7 +87,7 @@ class Shortener(BaseShortener):
         url = self.clean_url(url)
         expand_url = f"{self.api_url}/expand"
         payload = {
-            "domain": getattr(self, "domain", "adf.ly"),
+            "domain": getattr(self, "domain", "linkly.webhostingfree.io"),
             "advert_type": getattr(self, "type", "int"),
             "group_id": getattr(self, "group_id", None),
             "key": self.api_key,
